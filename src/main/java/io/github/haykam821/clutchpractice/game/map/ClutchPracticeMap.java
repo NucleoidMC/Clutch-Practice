@@ -27,6 +27,8 @@ public class ClutchPracticeMap {
 	private static final BlockBounds EMPTY_BOUNDS = BlockBounds.ofBlock(BlockPos.ORIGIN);
 	private static final BlockState AIR = Blocks.AIR.getDefaultState();
 
+	private static final Vec2f DEFAULT_SPAWN_ROTATION = new Vec2f(90, 0);
+
 	private final ClutchPracticeMapConfig config;
 	private final MapTemplate template;
 	private final Box box;
@@ -119,11 +121,10 @@ public class ClutchPracticeMap {
 	private Vec2f getSpawnRotation() {
 		TemplateRegion spawn = this.template.getMetadata().getFirstRegion("spawn");
 		if (spawn != null) {
-			NbtList tag = spawn.getData().getList("Rotation", NbtElement.FLOAT_TYPE);
-			return new Vec2f(tag.getFloat(0), tag.getFloat(1));
+			return spawn.getData().get("Rotation", Vec2f.CODEC).orElse(DEFAULT_SPAWN_ROTATION);
 		}
 
-		return new Vec2f(90, 0);
+		return DEFAULT_SPAWN_ROTATION;
 	}
 
 	public void spawn(ServerPlayerEntity player) {
