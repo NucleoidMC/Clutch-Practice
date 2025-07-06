@@ -9,7 +9,7 @@ import io.github.haykam821.clutchpractice.game.map.ClutchPracticeMap;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.component.DataComponentTypes;
-import net.minecraft.item.BlockPredicatesChecker;
+import net.minecraft.component.type.BlockPredicatesComponent;
 import net.minecraft.item.ItemConvertible;
 import net.minecraft.item.ItemStack;
 import net.minecraft.predicate.BlockPredicate;
@@ -58,8 +58,8 @@ public class PlacementClutchType extends ClutchType {
 			})
 			.toList();
 
-		BlockPredicatesChecker checker = new BlockPredicatesChecker(predicates);
-		stack.set(DataComponentTypes.CAN_PLACE_ON, checker);
+		BlockPredicatesComponent component = new BlockPredicatesComponent(predicates);
+		stack.set(DataComponentTypes.CAN_PLACE_ON, component);
 
 		adder.accept(stack);
 	}

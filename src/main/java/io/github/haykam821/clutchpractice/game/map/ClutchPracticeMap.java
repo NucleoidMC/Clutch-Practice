@@ -5,8 +5,6 @@ import java.util.Set;
 import io.github.haykam821.clutchpractice.TrackedBlockStateProvider;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -131,7 +129,7 @@ public class ClutchPracticeMap {
 		Vec3d spawn = this.getSpawn();
 		Vec2f rotation = this.getSpawnRotation();
 
-		player.teleport(player.getServerWorld(), spawn.getX(), spawn.getY(), spawn.getZ(), Set.of(), rotation.x, rotation.y, true);
+		player.teleport(player.getWorld(), spawn.getX(), spawn.getY(), spawn.getZ(), Set.of(), rotation.x, rotation.y, true);
 	}
 
 	public boolean respawnIfOutOfBounds(ServerPlayerEntity player) {
