@@ -58,7 +58,7 @@ public class PlacementClutchType extends ClutchType {
 			})
 			.toList();
 
-		BlockPredicatesChecker checker = new BlockPredicatesChecker(predicates, true);
+		BlockPredicatesChecker checker = new BlockPredicatesChecker(predicates);
 		stack.set(DataComponentTypes.CAN_PLACE_ON, checker);
 
 		adder.accept(stack);
