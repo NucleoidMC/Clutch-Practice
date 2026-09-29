@@ -4,68 +4,68 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import net.minecraft.advancements.predicates.BlockPredicate;
+import net.minecraft.advancements.predicates.StatePropertiesPredicate;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.AdventureModePredicate;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
 import io.github.haykam821.clutchpractice.TrackedBlockStateProvider;
 import io.github.haykam821.clutchpractice.game.map.ClutchPracticeMap;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.BlockPredicatesComponent;
-import net.minecraft.item.ItemConvertible;
-import net.minecraft.item.ItemStack;
-import net.minecraft.predicate.BlockPredicate;
-import net.minecraft.predicate.StatePredicate;
-import net.minecraft.registry.RegistryEntryLookup;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.state.property.Property;
-import net.minecraft.text.Text;
 
 public class PlacementClutchType extends ClutchType {
 	private final ItemStack stack;
 
-	protected PlacementClutchType(ItemConvertible item) {
+	protected PlacementClutchType(ItemLike item) {
 		super(new ItemStack(item));
 
 		this.stack = new ItemStack(item);
 	}
 
 	@Override
-	protected Text createName() {
-		return this.stack.getName();
+	protected Component createName() {
+		return this.stack.getHoverName();
 	}
 
 	@Override
-	public void addItems(Consumer<ItemStack> adder, Set<BlockState> floor, Set<BlockState> base, RegistryWrapper.WrapperLookup registries) {
-		RegistryEntryLookup<Block> blocks = registries.getOrThrow(RegistryKeys.BLOCK);
+	public void addItems(Consumer<ItemStack> adder, Set<BlockState> floor, Set<BlockState> base, HolderLookup.Provider registries) {
+		HolderGetter<Block> blocks = registries.lookupOrThrow(Registries.BLOCK);
 
 		ItemStack stack = this.stack.copy();
 
 		List<BlockPredicate> predicates = base.stream()
 			.map(state -> {
-				BlockPredicate.Builder builder = BlockPredicate.Builder.create();
-				builder.blocks(blocks, state.getBlock());
+				BlockPredicate.Builder builder = BlockPredicate.Builder.block();
+				builder.of(blocks, state.getBlock());
 
-				StatePredicate.Builder stateBuilder = StatePredicate.Builder.create();
+				StatePropertiesPredicate.Builder stateBuilder = StatePropertiesPredicate.Builder.properties();
 
 				for (Property<?> property : state.getProperties()) {
-					stateBuilder.exactMatch(property, state.get(property).toString());
+					stateBuilder.hasProperty(property, state.getValue(property).toString());
 				}
 
-				builder.state(stateBuilder);
+				builder.setProperties(stateBuilder);
 
 				return builder.build();
 			})
 			.toList();
 
-		BlockPredicatesComponent component = new BlockPredicatesComponent(predicates);
-		stack.set(DataComponentTypes.CAN_PLACE_ON, component);
+		AdventureModePredicate component = new AdventureModePredicate(predicates);
+		stack.set(DataComponents.CAN_PLACE_ON, component);
 
 		adder.accept(stack);
 	}
 
 	@Override
-	public void clearArea(ServerWorld world, ClutchPracticeMap map, TrackedBlockStateProvider floor, TrackedBlockStateProvider base) {
+	public void clearArea(ServerLevel world, ClutchPracticeMap map, TrackedBlockStateProvider floor, TrackedBlockStateProvider base) {
 		map.clearArea(world, floor);
 		map.placeRandomBase(world, base, 0);
 	}

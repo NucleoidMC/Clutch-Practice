@@ -2,17 +2,16 @@ package io.github.haykam821.clutchpractice.game.map;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
-import net.minecraft.block.Blocks;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.gen.stateprovider.BlockStateProvider;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
 
 public class ClutchPracticeMapConfig {
 	public static final Codec<ClutchPracticeMapConfig> CODEC = RecordCodecBuilder.create(instance -> {
 		return instance.group(
 			Identifier.CODEC.fieldOf("id").forGetter(ClutchPracticeMapConfig::getId),
-			BlockStateProvider.TYPE_CODEC.optionalFieldOf("floor_provider", BlockStateProvider.of(Blocks.END_STONE_BRICKS)).forGetter(ClutchPracticeMapConfig::getFloorProvider),
-			BlockStateProvider.TYPE_CODEC.optionalFieldOf("base_provider", BlockStateProvider.of(Blocks.SMOOTH_STONE)).forGetter(ClutchPracticeMapConfig::getBaseProvider)
+			BlockStateProvider.DIRECT_CODEC.optionalFieldOf("floor_provider", BlockStateProvider.of(Blocks.END_STONE_BRICKS)).forGetter(ClutchPracticeMapConfig::getFloorProvider),
+			BlockStateProvider.DIRECT_CODEC.optionalFieldOf("base_provider", BlockStateProvider.of(Blocks.SMOOTH_STONE)).forGetter(ClutchPracticeMapConfig::getBaseProvider)
 		).apply(instance, ClutchPracticeMapConfig::new);
 	});
 

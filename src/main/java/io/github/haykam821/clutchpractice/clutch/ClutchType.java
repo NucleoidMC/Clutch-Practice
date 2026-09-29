@@ -2,21 +2,20 @@ package io.github.haykam821.clutchpractice.clutch;
 
 import java.util.Set;
 import java.util.function.Consumer;
-
+import net.minecraft.util.Util;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
 import io.github.haykam821.clutchpractice.TrackedBlockStateProvider;
 import io.github.haykam821.clutchpractice.game.map.ClutchPracticeMap;
-import net.minecraft.block.BlockState;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.Util;
-import net.minecraft.util.math.random.Random;
 
 public abstract class ClutchType {
 	private final ItemStack icon;
-	private Text name;
+	private Component name;
 
 	public ClutchType(ItemStack icon) {
 		this.icon = icon;
@@ -26,12 +25,12 @@ public abstract class ClutchType {
 		return this.icon;
 	}
 
-	protected Text createName() {
+	protected Component createName() {
 		Identifier id = ClutchTypes.REGISTRY.getIdentifier(this);
-		return Text.translatable(Util.createTranslationKey("clutchType", id));
+		return Component.translatable(Util.makeDescriptionId("clutchType", id));
 	}
 
-	public final Text getName() {
+	public final Component getName() {
 		if (this.name == null) {
 			this.name = this.createName();
 		}
@@ -39,11 +38,11 @@ public abstract class ClutchType {
 		return this.name;
 	}
 
-	public ClutchType resolve(Random random) {
+	public ClutchType resolve(RandomSource random) {
 		return this;
 	}
 
-	public abstract void addItems(Consumer<ItemStack> adder, Set<BlockState> floor, Set<BlockState> base, RegistryWrapper.WrapperLookup registries);
+	public abstract void addItems(Consumer<ItemStack> adder, Set<BlockState> floor, Set<BlockState> base, HolderLookup.Provider registries);
 
-	public abstract void clearArea(ServerWorld world, ClutchPracticeMap map, TrackedBlockStateProvider floor, TrackedBlockStateProvider base);
+	public abstract void clearArea(ServerLevel world, ClutchPracticeMap map, TrackedBlockStateProvider floor, TrackedBlockStateProvider base);
 }

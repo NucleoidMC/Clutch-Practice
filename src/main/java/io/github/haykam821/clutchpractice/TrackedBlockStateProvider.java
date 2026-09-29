@@ -2,11 +2,11 @@ package io.github.haykam821.clutchpractice;
 
 import java.util.HashSet;
 import java.util.Set;
-
-import net.minecraft.block.BlockState;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.random.Random;
-import net.minecraft.world.gen.stateprovider.BlockStateProvider;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
 
 public class TrackedBlockStateProvider {
 	private final BlockStateProvider delegate;
@@ -16,8 +16,8 @@ public class TrackedBlockStateProvider {
 		this.delegate = delegate;
 	}
 
-	public BlockState get(Random random, BlockPos pos) {
-		BlockState state = this.delegate.get(random, pos);
+	public BlockState get(LevelAccessor level, RandomSource random, BlockPos pos) {
+		BlockState state = this.delegate.getState(level, random, pos);
 		this.states.add(state);
 
 		return state;

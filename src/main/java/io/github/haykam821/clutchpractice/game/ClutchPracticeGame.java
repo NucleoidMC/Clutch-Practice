@@ -6,23 +6,24 @@ import io.github.haykam821.clutchpractice.clutch.ClutchTypes;
 import io.github.haykam821.clutchpractice.game.map.ClutchDisplay;
 import io.github.haykam821.clutchpractice.game.map.ClutchPracticeMap;
 import io.github.haykam821.clutchpractice.game.map.ClutchPracticeMapBuilder;
-import net.minecraft.block.BlockState;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemUsageContext;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvent;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.GameMode;
-import net.minecraft.world.GameRules;
-import xyz.nucleoid.fantasy.RuntimeWorldConfig;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Prediction;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import xyz.nucleoid.fantasy.RuntimeLevelConfig;
 import xyz.nucleoid.map_templates.BlockBounds;
 import xyz.nucleoid.plasmid.api.game.GameActivity;
 import xyz.nucleoid.plasmid.api.game.GameCloseReason;
@@ -44,23 +45,23 @@ import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
 public class ClutchPracticeGame implements GameActivityEvents.Tick, BlockPlaceEvent.Before, GamePlayerEvents.Accept, GamePlayerEvents.Offer, PlayerDamageEvent, PlayerDeathEvent, GamePlayerEvents.Remove, BlockUseEvent {
 	private final GameSpace gameSpace;
-	private final ServerWorld world;
+	private final ServerLevel world;
 	private final ClutchPracticeMap map;
 	private final ClutchPracticeConfig config;
 	private final ClutchDisplay clutchDisplay;
 
-	private ServerPlayerEntity mainPlayer;
+	private ServerPlayer mainPlayer;
 	private ClutchType clutchType = ClutchTypes.RANDOM;
 	private int streak = 0;
 	private int maxStreak = 0;
 
-	public ClutchPracticeGame(GameSpace gameSpace, ServerWorld world, ClutchPracticeMap map, ClutchPracticeConfig config) {
+	public ClutchPracticeGame(GameSpace gameSpace, ServerLevel world, ClutchPracticeMap map, ClutchPracticeConfig config) {
 		this.gameSpace = gameSpace;
 		this.world = world;
 		this.map = map;
 		this.config = config;
 
-		Vec3d clutchDisplayPos = this.map.getClutchDisplayPos();
+		Vec3 clutchDisplayPos = this.map.getClutchDisplayPos();
 		this.clutchDisplay = clutchDisplayPos == null ? null : new ClutchDisplay(world, clutchDisplayPos, this.clutchType);
 	}
 
@@ -86,11 +87,11 @@ public class ClutchPracticeGame implements GameActivityEvents.Tick, BlockPlaceEv
 		ClutchPracticeConfig config = context.config();
 		ClutchPracticeMap map = new ClutchPracticeMapBuilder(config.getMapConfig()).build(context.server());
 
-		RuntimeWorldConfig worldConfig = new RuntimeWorldConfig()
+		RuntimeLevelConfig worldConfig = new RuntimeLevelConfig()
 			.setGenerator(map.createGenerator(context.server()))
-			.setGameRule(GameRules.DO_TILE_DROPS, false);
+			.setGameRule(GameRules.BLOCK_DROPS, false);
 
-		return context.openWithWorld(worldConfig, (activity, world) -> {
+		return context.openWithLevel(worldConfig, (activity, world) -> {
 			ClutchPracticeGame phase = new ClutchPracticeGame(activity.getGameSpace(), world, map, config);
 			ClutchPracticeGame.setRules(activity);
 
@@ -110,7 +111,7 @@ public class ClutchPracticeGame implements GameActivityEvents.Tick, BlockPlaceEv
 	public void onTick() {
 		if (this.mainPlayer == null) return;
 
-		if (this.map.getExit().contains(this.mainPlayer.getPos())) {
+		if (this.map.getExit().contains(this.mainPlayer.position())) {
 			this.gameSpace.getPlayers().kick(this.mainPlayer);
 		}
 		this.map.respawnIfOutOfBounds(this.mainPlayer);
@@ -125,9 +126,9 @@ public class ClutchPracticeGame implements GameActivityEvents.Tick, BlockPlaceEv
 			if (this.mainPlayer == null) {
 				this.mainPlayer = player;
 				this.reset(false);
-				player.changeGameMode(GameMode.ADVENTURE);
+				player.setGameMode(GameType.ADVENTURE);
 			} else {
-				player.changeGameMode(GameMode.SPECTATOR);
+				player.setGameMode(GameType.SPECTATOR);
 			}
 		});
 	}
@@ -136,39 +137,39 @@ public class ClutchPracticeGame implements GameActivityEvents.Tick, BlockPlaceEv
 		return this.mainPlayer == null ? offer.acceptParticipants() : offer.acceptSpectators();
 	}
 
-	public EventResult onDamage(ServerPlayerEntity player, DamageSource source, float damage) {
+	public EventResult onDamage(ServerPlayer player, DamageSource source, float damage) {
 		if (player == this.mainPlayer) {
 			this.resetAndUpdateStreak(ClutchResult.FAIL);
 		}
 		return EventResult.DENY;
 	}
 
-	public EventResult onPlace(ServerPlayerEntity player, ServerWorld world, BlockPos pos, BlockState state, ItemUsageContext context) {
+	public EventResult onPlace(ServerPlayer player, ServerLevel world, BlockPos pos, BlockState state, UseOnContext context) {
 		return this.getAreaPosResult(pos);
 	}
 
-	public EventResult onDeath(ServerPlayerEntity player, DamageSource source) {
+	public EventResult onDeath(ServerPlayer player, DamageSource source) {
 		if (player == this.mainPlayer) {
 			this.resetAndUpdateStreak(ClutchResult.FAIL);
 		}
 		return EventResult.DENY;
 	}
 
-	public void onRemovePlayer(ServerPlayerEntity player) {
+	public void onRemovePlayer(ServerPlayer player) {
 		if (player == this.mainPlayer) {
 			this.gameSpace.close(GameCloseReason.FINISHED);
 		}
 	}
 
-	public ActionResult onUse(ServerPlayerEntity player, Hand hand, BlockHitResult hitResult) {
+	public InteractionResult onUse(ServerPlayer player, InteractionHand hand, BlockHitResult hitResult) {
 		BlockPos pos = hitResult.getBlockPos();
 
-		if (player == this.mainPlayer && hand == Hand.MAIN_HAND) {
+		if (player == this.mainPlayer && hand == InteractionHand.MAIN_HAND) {
 			BlockBounds clutchSelector = this.map.getClutchSelector();
 
 			if (clutchSelector != null && clutchSelector.contains(pos)) {
 				this.clutchType = ClutchTypes.getNext(this.clutchType);
-				this.sendSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP);
+				this.sendSound(SoundEvents.EXPERIENCE_ORB_PICKUP);
 
 				this.streak = 0;
 				this.maxStreak = 0;
@@ -179,7 +180,7 @@ public class ClutchPracticeGame implements GameActivityEvents.Tick, BlockPlaceEv
 					this.clutchDisplay.setType(this.clutchType);
 				}
 
-				return ActionResult.SUCCESS_SERVER;
+				return InteractionResult.SUCCESS_SERVER;
 			}
 		}
 
@@ -187,8 +188,8 @@ public class ClutchPracticeGame implements GameActivityEvents.Tick, BlockPlaceEv
 	}
 
 	// Utilities
-	private boolean isOnClutchGround(ServerPlayerEntity player) {
-		if (!player.isOnGround()) return false;
+	private boolean isOnClutchGround(ServerPlayer player) {
+		if (!player.onGround()) return false;
 
 		BlockBounds area = this.map.getArea();
 		return player.getY() == area.min().getY() + 1 || area.asBox().intersects(player.getBoundingBox());
@@ -200,13 +201,13 @@ public class ClutchPracticeGame implements GameActivityEvents.Tick, BlockPlaceEv
 		if (result == ClutchResult.SUCCESS) {
 			this.streak += 1;
 			if (this.streak <= this.maxStreak) {
-				this.sendSound(SoundEvents.ENTITY_VILLAGER_YES);
+				this.sendSound(SoundEvents.VILLAGER_YES);
 			} else {
 				this.maxStreak = this.streak;
-				this.sendSound(SoundEvents.ENTITY_PLAYER_LEVELUP);
+				this.sendSound(SoundEvents.PLAYER_LEVELUP);
 			}
 		} else if (result == ClutchResult.FAIL) {
-			this.sendSound(SoundEvents.ENTITY_VILLAGER_NO);
+			this.sendSound(SoundEvents.VILLAGER_NO);
 			this.streak = 0;
 		}
 
@@ -214,7 +215,7 @@ public class ClutchPracticeGame implements GameActivityEvents.Tick, BlockPlaceEv
 	}
 
 	private void sendSound(SoundEvent sound) {
-		this.gameSpace.getPlayers().playSound(sound, SoundCategory.PLAYERS, 1, 1);
+		this.gameSpace.getPlayers().playSound(sound, SoundSource.PLAYERS, 1, 1);
 	}
 
 	private void reset(boolean spawn) {
@@ -228,12 +229,12 @@ public class ClutchPracticeGame implements GameActivityEvents.Tick, BlockPlaceEv
 		ClutchType clutchType = this.clutchType.resolve(this.world.getRandom());
 		clutchType.clearArea(this.world, this.map, floor, base);
 
-		PlayerInventory inventory = this.mainPlayer.getInventory();
+		Inventory inventory = this.mainPlayer.getInventory();
 
-		inventory.clear();
-		clutchType.addItems(inventory::offerOrDrop, floor.getStates(), base.getStates(), this.world.getRegistryManager());
+		inventory.clearContent();
+		clutchType.addItems(stack -> inventory.placeItemBackInInventory(stack, Prediction.SERVER_ONLY), floor.getStates(), base.getStates(), this.world.registryAccess());
 
-		this.mainPlayer.setExperienceLevel(this.streak);
+		this.mainPlayer.setExperienceLevels(this.streak);
 	}
 
 	private EventResult getAreaPosResult(BlockPos pos) {

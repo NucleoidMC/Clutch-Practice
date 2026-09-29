@@ -2,11 +2,10 @@ package io.github.haykam821.clutchpractice.clutch;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 import io.github.haykam821.clutchpractice.Main;
-import net.minecraft.block.Blocks;
-import net.minecraft.item.Items;
-import net.minecraft.util.Identifier;
 import xyz.nucleoid.plasmid.api.util.TinyRegistry;
 
 public final class ClutchTypes {

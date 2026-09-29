@@ -3,38 +3,38 @@ package io.github.haykam821.clutchpractice.game.map;
 import java.util.Set;
 
 import io.github.haykam821.clutchpractice.TrackedBlockStateProvider;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec2f;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.random.Random;
-import net.minecraft.world.gen.chunk.ChunkGenerator;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec2;
+import net.minecraft.world.phys.Vec3;
 import xyz.nucleoid.map_templates.BlockBounds;
 import xyz.nucleoid.map_templates.MapTemplate;
 import xyz.nucleoid.map_templates.TemplateRegion;
-import xyz.nucleoid.plasmid.api.game.world.generator.TemplateChunkGenerator;
+import xyz.nucleoid.plasmid.api.game.level.generator.TemplateChunkGenerator;
 
 public class ClutchPracticeMap {
-	private static final BlockBounds EMPTY_BOUNDS = BlockBounds.ofBlock(BlockPos.ORIGIN);
-	private static final BlockState AIR = Blocks.AIR.getDefaultState();
+	private static final BlockBounds EMPTY_BOUNDS = BlockBounds.ofBlock(BlockPos.ZERO);
+	private static final BlockState AIR = Blocks.AIR.defaultBlockState();
 
-	private static final Vec2f DEFAULT_SPAWN_ROTATION = new Vec2f(90, 0);
+	private static final Vec2 DEFAULT_SPAWN_ROTATION = new Vec2(90, 0);
 
 	private final ClutchPracticeMapConfig config;
 	private final MapTemplate template;
-	private final Box box;
+	private final AABB box;
 	private final BlockBounds area;
-	private final Box exit;
+	private final AABB exit;
 
 	private final BlockBounds clutchSelector;
-	private final Vec3d clutchDisplayPos;
+	private final Vec3 clutchDisplayPos;
 
 	public ClutchPracticeMap(ClutchPracticeMapConfig config, MapTemplate template) {
 		this.config = config;
@@ -53,35 +53,35 @@ public class ClutchPracticeMap {
 		return this.area;
 	}
 
-	public void clearArea(ServerWorld world, TrackedBlockStateProvider floor) {
-		Random random = world.getRandom();
+	public void clearArea(ServerLevel world, TrackedBlockStateProvider floor) {
+		RandomSource random = world.getRandom();
 		int minY = this.area.min().getY();
 
 		for (BlockPos pos : this.area) {
 			if (pos.getY() == minY) {
-				world.setBlockState(pos, floor.get(random, pos));
+				world.setBlockAndUpdate(pos, floor.get(world, random, pos));
 			} else {
-				world.setBlockState(pos, AIR);
+				world.setBlockAndUpdate(pos, AIR);
 			}
 		}
 	}
 
-	public void placeRandomBase(ServerWorld world, TrackedBlockStateProvider base, int offsetY) {
+	public void placeRandomBase(ServerLevel world, TrackedBlockStateProvider base, int offsetY) {
 		this.placeRandomBase(world, base, offsetY, offsetY);
 	}
 
-	public void placeRandomBase(ServerWorld world, TrackedBlockStateProvider base, int minOffsetY, int maxOffsetY) {
-		Random random = world.getRandom();
+	public void placeRandomBase(ServerLevel world, TrackedBlockStateProvider base, int minOffsetY, int maxOffsetY) {
+		RandomSource random = world.getRandom();
 		int minY = this.area.min().getY();
 
-		int baseX = MathHelper.nextInt(random, this.area.min().getX(), this.area.max().getX());
-		int baseZ = MathHelper.nextInt(random, this.area.min().getZ(), this.area.max().getZ());
+		int baseX = Mth.nextInt(random, this.area.min().getX(), this.area.max().getX());
+		int baseZ = Mth.nextInt(random, this.area.min().getZ(), this.area.max().getZ());
 
-		BlockPos.Mutable pos = new BlockPos.Mutable(baseX, minY + minOffsetY, baseZ);
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(baseX, minY + minOffsetY, baseZ);
 
 		while (pos.getY() <= minY + maxOffsetY) {
-			BlockState baseState = base.get(random, pos);
-			world.setBlockState(pos, baseState);
+			BlockState baseState = base.get(world, random, pos);
+			world.setBlockAndUpdate(pos, baseState);
 
 			pos.move(Direction.UP);
 		}
@@ -95,7 +95,7 @@ public class ClutchPracticeMap {
 		return new TrackedBlockStateProvider(this.config.getBaseProvider());
 	}
 
-	public Box getExit() {
+	public AABB getExit() {
 		return this.exit;
 	}
 
@@ -103,37 +103,37 @@ public class ClutchPracticeMap {
 		return this.clutchSelector;
 	}
 
-	public Vec3d getClutchDisplayPos() {
+	public Vec3 getClutchDisplayPos() {
 		return this.clutchDisplayPos;
 	}
 
-	public Vec3d getSpawn() {
+	public Vec3 getSpawn() {
 		TemplateRegion spawn = this.template.getMetadata().getFirstRegion("spawn");
 		if (spawn != null) {
 			return spawn.getBounds().centerBottom();
 		}
 
-		return new Vec3d(0.5, 76, 0.5);
+		return new Vec3(0.5, 76, 0.5);
 	}
 
-	private Vec2f getSpawnRotation() {
+	private Vec2 getSpawnRotation() {
 		TemplateRegion spawn = this.template.getMetadata().getFirstRegion("spawn");
 		if (spawn != null) {
-			return spawn.getData().get("Rotation", Vec2f.CODEC).orElse(DEFAULT_SPAWN_ROTATION);
+			return spawn.getData().read("Rotation", Vec2.CODEC).orElse(DEFAULT_SPAWN_ROTATION);
 		}
 
 		return DEFAULT_SPAWN_ROTATION;
 	}
 
-	public void spawn(ServerPlayerEntity player) {
-		Vec3d spawn = this.getSpawn();
-		Vec2f rotation = this.getSpawnRotation();
+	public void spawn(ServerPlayer player) {
+		Vec3 spawn = this.getSpawn();
+		Vec2 rotation = this.getSpawnRotation();
 
-		player.teleport(player.getWorld(), spawn.getX(), spawn.getY(), spawn.getZ(), Set.of(), rotation.x, rotation.y, true);
+		player.teleportTo(player.level(), spawn.x(), spawn.y(), spawn.z(), Set.of(), rotation.x, rotation.y, true);
 	}
 
-	public boolean respawnIfOutOfBounds(ServerPlayerEntity player) {
-		if (this.box.contains(player.getPos())) {
+	public boolean respawnIfOutOfBounds(ServerPlayer player) {
+		if (this.box.contains(player.position())) {
 			return false;
 		}
 
@@ -150,8 +150,8 @@ public class ClutchPracticeMap {
 		return bounds == null ? EMPTY_BOUNDS : bounds;
 	}
 
-	private static Box getBox(MapTemplate template, String marker) {
+	private static AABB getBox(MapTemplate template, String marker) {
 		BlockBounds bounds = template.getMetadata().getFirstRegionBounds(marker);
-		return bounds == null ? new Box(Vec3d.ZERO, Vec3d.ZERO) : bounds.asBox();
+		return bounds == null ? new AABB(Vec3.ZERO, Vec3.ZERO) : bounds.asBox();
 	}
 }
